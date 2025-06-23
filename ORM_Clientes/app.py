@@ -22,7 +22,7 @@ class ClienteApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Gestión de Restaurante - Clientes")
-        self.geometry("1300x900")
+        self.geometry("1000x900")
         self.session = SessionLocal()
 
         self.setup_tabs()
@@ -534,17 +534,7 @@ class ClienteApp(ctk.CTk):
         self.historial_tabla.grid(row=8, column=0, columnspan=3, padx=10, sticky="nsew")
         self.historial_tabla.bind("<<TreeviewSelect>>", self.mostrar_detalles_pedido)
 
-        # ---------- DETALLE DE PEDIDO SELECCIONADO ----------
-        ctk.CTkLabel(tab, text="Detalle del Pedido", text_color="black", font=("Arial", 14)).grid(
-            row=9, column=0, columnspan=3, pady=(10, 5)
-        )
-
-        self.detalle_tabla = ttk.Treeview(tab, columns=("Menú", "Cantidad"), show="headings", height=4)
-        for col in ("Menú", "Cantidad"):
-            self.detalle_tabla.heading(col, text=col)
-            self.detalle_tabla.column(col, anchor="center")
-
-        self.detalle_tabla.grid(row=10, column=0, columnspan=3, padx=10, sticky="nsew")
+      
 
         self.cargar_historial_pedidos()
 
@@ -601,7 +591,6 @@ class ClienteApp(ctk.CTk):
             messagebox.showerror("Cliente inválido", "Selecciona un cliente válido.")
             return
     
-        from crud import pedido_crud
         pedido_id = pedido_crud.crear_pedido(self.session, cliente_id, self.pedido_items)
     
         messagebox.showinfo("Éxito", f"Pedido registrado con ID {pedido_id} ✅")
@@ -616,7 +605,6 @@ class ClienteApp(ctk.CTk):
 
 
     def cargar_historial_pedidos(self):
-        from crud import pedido_crud
         self.historial_tabla.delete(*self.historial_tabla.get_children())
 
         pedidos = pedido_crud.listar_pedidos(self.session)
@@ -624,7 +612,6 @@ class ClienteApp(ctk.CTk):
             self.historial_tabla.insert("", "end", values=(p.id, p.cliente.nombre, p.fecha.strftime("%Y-%m-%d %H:%M"), f"${p.total:.0f}"))
 
     def mostrar_detalles_pedido(self, event):
-        from crud import pedido_crud
         selected = self.historial_tabla.selection()
         if not selected:
             return
@@ -643,7 +630,6 @@ class ClienteApp(ctk.CTk):
             return
     
         pedido_id = int(self.historial_tabla.item(selected[0])["values"][0])
-        from crud import pedido_crud
     
         pedido = self.session.query(pedido_crud.Pedido).get(pedido_id)
         detalles = pedido_crud.obtener_detalle_pedido(self.session, pedido_id)
