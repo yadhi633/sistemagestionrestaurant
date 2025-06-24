@@ -11,7 +11,8 @@ class Cliente(Base):
     nombre = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
 
-    pedidos = relationship("Pedido", back_populates="cliente")
+    pedidos = relationship("Pedido", back_populates="cliente", cascade="all, delete", passive_deletes=True)
+
 
 class Ingrediente(Base):
     __tablename__ = 'ingredientes'
@@ -51,18 +52,18 @@ class Pedido(Base):
     __tablename__ = 'pedidos'
 
     id = Column(Integer, primary_key=True)
-    cliente_id = Column(Integer, ForeignKey('clientes.id'))
+    cliente_id = Column(Integer, ForeignKey('clientes.id', ondelete="CASCADE"))
     fecha = Column(DateTime, default=datetime.now)
     total = Column(Float, default=0)
 
-    cliente = relationship("Cliente", back_populates="pedidos")
-    detalles = relationship("PedidoDetalle", back_populates="pedido")
+    cliente = relationship("Cliente", back_populates="pedidos", passive_deletes=True)
+    detalles = relationship("PedidoDetalle", back_populates="pedido", cascade="all, delete")
 
 class PedidoDetalle(Base):
     __tablename__ = 'pedido_detalles'
 
     id = Column(Integer, primary_key=True)
-    pedido_id = Column(Integer, ForeignKey('pedidos.id'))
+    pedido_id = Column(Integer, ForeignKey('pedidos.id', ondelete="CASCADE"))
     menu_id = Column(Integer, ForeignKey('menus.id'))
     cantidad = Column(Integer, default=1)
 

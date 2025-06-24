@@ -12,7 +12,6 @@ from crud import cliente_crud
 from crud import ingrediente_crud 
 from crud import menu_crud
 from crud import pedido_crud
-from crud import estadisticas_crud  # Debemos crearlo
 from graficos import Graficos
 
 ctk.set_appearance_mode("System")
@@ -22,7 +21,7 @@ class ClienteApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Gestión de Restaurante - Clientes")
-        self.geometry("1000x900")
+        self.geometry("1366x768")
         self.session = SessionLocal()
 
         self.setup_tabs()
@@ -30,6 +29,7 @@ class ClienteApp(ctk.CTk):
         self.setup_ingredientes_tab()
         self.setup_menus_tab()
         self.setup_pedidos_tab()
+        self.setup_historial_tab()
         self.graficos = Graficos(self.estadisticas_tab, self.session)
 
 
@@ -40,7 +40,9 @@ class ClienteApp(ctk.CTk):
         self.ingredientes_tab = self.tabview.add("Ingredientes")
         self.menus_tab = self.tabview.add("Menús")
         self.pedidos_tab = self.tabview.add("Pedidos")
+        self.historial_tab = self.tabview.add("Historial de Pedidos")
         self.estadisticas_tab = self.tabview.add("Estadisticas")
+
 
 
 #------------------------------------------------------------CLIENTES-------------------------------------------------------------------#
@@ -474,6 +476,41 @@ class ClienteApp(ctk.CTk):
         else:
             messagebox.showerror("Error", "No se pudo actualizar el menú.")
 
+#------------------------------------------------------HISTORIAL DE PEDIDOS------------------------------------------------------------#
+    def setup_historial_tab(self):
+        tab = self.historial_tab
+        tab.configure(fg_color="#dceeff")
+
+        ctk.CTkLabel(tab, text="Historial de Pedidos", text_color="black", font=("Arial", 16)).pack(pady=(20, 5))
+
+        historial_frame = tk.Frame(tab)
+        historial_frame.pack(padx=10, fill="both", expand=True)
+
+        scrollbar = tk.Scrollbar(historial_frame)
+        scrollbar.pack(side="right", fill="y")
+
+        self.historial_tabla = ttk.Treeview(historial_frame, columns=("ID", "Cliente", "Fecha", "Total"), show="headings", height=8, yscrollcommand=scrollbar.set)
+        scrollbar.config(command=self.historial_tabla.yview)
+
+        for col in ("ID", "Cliente", "Fecha", "Total"):
+            self.historial_tabla.heading(col, text=col)
+            self.historial_tabla.column(col, anchor="center")
+
+        self.historial_tabla.pack(fill="both", expand=True)
+        self.historial_tabla.bind("<<TreeviewSelect>>", self.mostrar_detalles_pedido)
+
+        ctk.CTkLabel(tab, text="Detalle del Pedido", text_color="black", font=("Arial", 14)).pack(pady=(10, 5))
+
+        self.detalle_tabla = ttk.Treeview(tab, columns=("Menú", "Cantidad"), show="headings", height=4)
+        for col in ("Menú", "Cantidad"):
+            self.detalle_tabla.heading(col, text=col)
+            self.detalle_tabla.column(col, anchor="center")
+        self.detalle_tabla.pack(padx=10, fill="x", expand=False)
+
+        ctk.CTkButton(tab, text="🧾 Generar Boleta", command=self.generar_boleta).pack(pady=10)
+
+        self.cargar_historial_pedidos()
+
 #------------------------------------------------------------PEDIDOS-------------------------------------------------------------------#
     def setup_pedidos_tab(self):
         tab = self.pedidos_tab
@@ -494,7 +531,13 @@ class ClienteApp(ctk.CTk):
         self.pedido_cantidad_entry = ctk.CTkEntry(tab, width=100)
         self.pedido_cantidad_entry.grid(row=2, column=1, padx=10, pady=5, sticky="w")
 
-        ctk.CTkButton(tab, text="Agregar al Pedido", command=self.agregar_menu_al_pedido).grid(row=3, column=1, pady=10, sticky="w")
+        # ---------- BOTONES DE ACCIÓN ----------
+        botones_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        botones_frame.grid(row=3, column=0, columnspan=3, pady=10)
+
+        ctk.CTkButton(botones_frame, text="✅ Agregar al Pedido", command=self.agregar_menu_al_pedido).pack(side="left", padx=5)
+        ctk.CTkButton(botones_frame, text="❌ Eliminar Seleccionado", command=self.eliminar_item_pedido).pack(side="left", padx=5)
+        ctk.CTkButton(botones_frame, text="🗑 Vaciar Pedido", command=self.vaciar_tabla_pedido).pack(side="left", padx=5)
 
         # ---------- TABLA ----------
         self.pedido_items = []
@@ -510,9 +553,6 @@ class ClienteApp(ctk.CTk):
         # ---------- BOTÓN CONFIRMAR ----------
         ctk.CTkButton(tab, text="Confirmar Pedido", command=self.confirmar_pedido).grid(row=6, column=0, columnspan=3, pady=10)
 
-        # ---------- BOTÓN GENERAR BOLETA ---------
-        ctk.CTkButton(tab, text="🧾 Generar Boleta", command=self.generar_boleta).grid(row=11, column=0, columnspan=3, pady=10)
-
         # ---------- CONFIGURACIÓN GRID ----------
         tab.grid_rowconfigure(4, weight=1)
         tab.grid_columnconfigure(1, weight=1)
@@ -520,23 +560,7 @@ class ClienteApp(ctk.CTk):
         # ---------- CARGA DE DATOS ----------
         self.refrescar_clientes_disponibles()
         self.refrescar_menus_disponibles()
-
-        # ---------- HISTORIAL DE PEDIDOS ----------
-        ctk.CTkLabel(tab, text="Historial de Pedidos", text_color="black", font=("Arial", 16)).grid(
-            row=7, column=0, columnspan=3, pady=(20, 5)
-        )
-
-        self.historial_tabla = ttk.Treeview(tab, columns=("ID", "Cliente", "Fecha", "Total"), show="headings", height=5)
-        for col in ("ID", "Cliente", "Fecha", "Total"):
-            self.historial_tabla.heading(col, text=col)
-            self.historial_tabla.column(col, anchor="center")
-
-        self.historial_tabla.grid(row=8, column=0, columnspan=3, padx=10, sticky="nsew")
-        self.historial_tabla.bind("<<TreeviewSelect>>", self.mostrar_detalles_pedido)
-
-      
-
-        self.cargar_historial_pedidos()
+        # self.cargar_historial_pedidos()
 
     
     def refrescar_clientes_disponibles(self):
@@ -590,6 +614,11 @@ class ClienteApp(ctk.CTk):
         if not cliente_id:
             messagebox.showerror("Cliente inválido", "Selecciona un cliente válido.")
             return
+        
+        ok, mensaje = pedido_crud.verificar_stock_suficiente(self.session, self.pedido_items)
+        if not ok:
+            messagebox.showerror("Stock insuficiente", mensaje)
+            return
     
         pedido_id = pedido_crud.crear_pedido(self.session, cliente_id, self.pedido_items)
     
@@ -602,16 +631,53 @@ class ClienteApp(ctk.CTk):
         self.cargar_historial_pedidos()
         self.refrescar_ingredientes()
 
+    def eliminar_item_pedido(self):
+        seleccion = self.pedido_tabla.selection()
+        if not seleccion:
+            messagebox.showwarning("Selección Vacía", "Selecciona un ítem para eliminar.")
+            return
+        
+        for item in seleccion:
+            valores = self.pedido_tabla.item(item, "values")
+            menu_id, _, cantidad = valores
+            menu_id = int(menu_id)
+            cantidad = int(cantidad)
 
+            # Eliminar de la lista de items
+            self.pedido_items.remove((menu_id, cantidad))
+            self.pedido_tabla.delete(item)
+
+        self.actualizar_total_pedido()
+
+    def vaciar_tabla_pedido(self):
+        if messagebox.askyesno("Vaciar Pedido", "¿Estás seguro de que quieres vaciar el pedido?"):
+            for item in self.pedido_tabla.get_children():
+                self.pedido_tabla.delete(item)
+            self.pedido_items.clear()
+            self.pedido_total_label.configure(text="Total: $0")
+
+    def actualizar_total_pedido(self):
+        total_actual = sum(
+            self.session.query(menu_crud.Menu).get(mid).precio * int(cant)
+            for mid, cant in self.pedido_items
+        )
+        self.pedido_total_label.configure(text=f"Total: ${total_actual}")
 
     def cargar_historial_pedidos(self):
+        from crud import pedido_crud
         self.historial_tabla.delete(*self.historial_tabla.get_children())
 
         pedidos = pedido_crud.listar_pedidos(self.session)
         for p in pedidos:
-            self.historial_tabla.insert("", "end", values=(p.id, p.cliente.nombre, p.fecha.strftime("%Y-%m-%d %H:%M"), f"${p.total:.0f}"))
+            cliente_nombre = p.cliente.nombre if p.cliente else "Cliente eliminado"
+            self.historial_tabla.insert(
+                "", "end",
+                values=(p.id, cliente_nombre, p.fecha.strftime("%Y-%m-%d %H:%M"), f"${p.total:.0f}")
+            )
+
 
     def mostrar_detalles_pedido(self, event):
+        from crud import pedido_crud
         selected = self.historial_tabla.selection()
         if not selected:
             return
@@ -630,6 +696,7 @@ class ClienteApp(ctk.CTk):
             return
     
         pedido_id = int(self.historial_tabla.item(selected[0])["values"][0])
+        from crud import pedido_crud
     
         pedido = self.session.query(pedido_crud.Pedido).get(pedido_id)
         detalles = pedido_crud.obtener_detalle_pedido(self.session, pedido_id)

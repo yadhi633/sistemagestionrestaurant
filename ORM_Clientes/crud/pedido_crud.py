@@ -55,3 +55,31 @@ def obtener_pedidos_por_cliente(session: Session, cliente_id: int):
 
 def obtener_detalle_pedido(session: Session, pedido_id: int):
     return session.query(PedidoDetalle).filter_by(pedido_id=pedido_id).all()
+
+def verificar_stock_suficiente(session, items):
+    """
+    Verifica si hay stock suficiente para los ingredientes necesarios en los menús pedidos.
+    :param session: sesión activa de SQLAlchemy
+    :param items: lista de tuplas (menu_id, cantidad)
+    :return: (bool, mensaje) -> True si hay stock, False si falta algo
+    """
+    from models import MenuIngrediente, Ingrediente
+
+    faltantes = []
+
+    for menu_id, cantidad_menu in items:
+        ingredientes_menu = session.query(MenuIngrediente).filter_by(menu_id=menu_id).all()
+        for mi in ingredientes_menu:
+            total_requerido = mi.cantidad * cantidad_menu
+            stock_actual = session.query(Ingrediente).get(mi.ingrediente_id).cantidad
+
+            if stock_actual < total_requerido:
+                faltantes.append(
+                    f"- {mi.ingrediente.nombre} (necesario: {total_requerido}, disponible: {stock_actual})"
+                )
+
+    if faltantes:
+        mensaje = "❌ Stock insuficiente para los siguientes ingredientes:\n" + "\n".join(faltantes)
+        return False, mensaje
+
+    return True, ""
