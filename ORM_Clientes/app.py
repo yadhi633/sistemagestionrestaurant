@@ -317,6 +317,7 @@ class ClienteApp(ctk.CTk):
         ctk.CTkButton(btn_frame, text="Editar Menú", command=self.editar_menu).pack(side="left", padx=5)
         ctk.CTkButton(btn_frame, text="Limpiar", command=self.limpiar_menu).pack(side="left", padx=5)
         ctk.CTkButton(btn_frame, text="Eliminar Menú", command=self.eliminar_menu).pack(side="left", padx=5)
+        ctk.CTkButton(tab, text="Eliminar Ingrediente", command=self.eliminar_ingrediente_menu).grid(row=5, column=0, sticky="e", pady=5, padx=10)
 
         # Tabla de menús existentes
         self.tabla_menus = ttk.Treeview(tab, columns=("ID", "Nombre", "Descripción", "Precio"), show="headings", height=6)
@@ -476,6 +477,21 @@ class ClienteApp(ctk.CTk):
         else:
             messagebox.showerror("Error", "No se pudo actualizar el menú.")
 
+    def eliminar_ingrediente_menu(self):
+            selected = self.tabla_ing_menu.selection()
+            if not selected:
+                messagebox.showwarning("Sin selección", "Selecciona un ingrediente para eliminar.")
+                return
+
+            item = selected[0]
+            values = self.tabla_ing_menu.item(item, "values")
+            ingrediente_id = int(values[0])
+
+            # Eliminar de la lista local
+            self.ingredientes_menu = [i for i in self.ingredientes_menu if i[0] != ingrediente_id]
+
+            # Eliminar de la tabla
+            self.tabla_ing_menu.delete(item)
 #------------------------------------------------------HISTORIAL DE PEDIDOS------------------------------------------------------------#
     def setup_historial_tab(self):
         tab = self.historial_tab
